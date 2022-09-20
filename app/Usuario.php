@@ -88,4 +88,8 @@ class Usuario extends Authenticatable implements MustVerifyEmail
     {
         $this->notify(new ResetPassword($token));
     }
+
+    public function unidade(){
+        $this->hasOne('App\Unidade');
+    }
 }

@@ -15,4 +15,9 @@ class Unidade extends Model
         return $this->belongsTo('App\Setor');
     }
 
+    public function usuario()
+    {
+        return $this->belongsTo('App\Usuario', 'usuario_id');
+    }
+
 }

@@ -1,4 +1,6 @@
 $(function () {
+    $('.numTel').mask('(00)00000-0000');
+
     $('#tableUnidadeIndex').DataTable({
         searching: true,
         "language": {

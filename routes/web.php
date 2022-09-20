@@ -77,7 +77,7 @@ Route::middleware(['auth', 'verified', 'CheckCargoAdministrador'])->group(functi
 
     Route::get('cadastrar_unidade/{id}', 'UnidadeController@cadastrar')->name('cadastrar.unidade');
     Route::get('unidades/{id}', 'UnidadeController@index')->name('index.unidade');
-    Route::get('unidades/edit', 'UnidadeController@editar')->name('index_edit.unidade');
+
     Route::get('unidade_edit/{id}', 'UnidadeController@edit')->name('edit.unidade');
     Route::get('unidade_remove/{id}', 'UnidadeController@remover')->name('remover.unidade');
     Route::post('criar_unidade', 'UnidadeController@criar')->name('criar.unidade');

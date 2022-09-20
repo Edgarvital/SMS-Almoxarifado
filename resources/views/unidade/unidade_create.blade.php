@@ -1,7 +1,7 @@
 @extends('templates.principal')
 
 @section('title')
-    Cadastrar Unidade Basica
+    Cadastrar Unidade
 @endsection
 
 @section('content')
@@ -106,7 +106,7 @@
         <div class="form-group row">
             <div class="col-md-4">
                 <Button class="btn btn-secondary" type="button"
-                        onclick="if(confirm('Tem certeza que deseja Cancelar o cadastro do Material?')) location.href = '../' ">
+                        onclick="if(confirm('Tem certeza que deseja Cancelar o cadastro da Unidade?')) location.href = '../' ">
                     Cancelar
                 </Button>
                 <button type="submit" class="btn btn-success">Cadastrar</button>

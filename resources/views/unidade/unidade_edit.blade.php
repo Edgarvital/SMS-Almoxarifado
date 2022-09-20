@@ -1,6 +1,6 @@
 @extends('templates.principal')
 
-@section('title') Cadastrar Unidade Basica @endsection
+@section('title') Cadastrar Unidade @endsection
 
 @section('content')
     <div style="border-bottom: #949494 2px solid; padding: 5px; margin-bottom: 10px">

@@ -1,14 +1,14 @@
 @extends('templates.principal')
 
 @section('title')
-    Unidades Básicas
+    Unidades
 @endsection
 
 @section('content')
 
     <div class="row" style="border-bottom: #949494 2px solid; padding-bottom: 5px; margin-bottom: 10px">
         <div class="col-md-10">
-            <h2>Setor {{$setor->nome}} - Unidades Básicas</h2>
+            <h2>Setor {{$setor->nome}} - Unidades</h2>
         </div>
         <div class="col-md-2">
             <h2 class="text-right" title="Cadastrar Unidade">
@@ -49,8 +49,8 @@
                 <td style="text-align: center"> {{ $unidade->cep }} </td>
                 <td style="text-align: center"> {{ $unidade->endereco }}</td>
                 <td style="text-align: center"> {{ $unidade->bairro }}</td>
-                <td style="text-align: center"> Nome </td>
-                <td style="text-align: center"> Número </td>
+                <td style="text-align: center"> {{ $unidade->usuario->nome }} </td>
+                <td style="text-align: center" class="numTel"> {{ $unidade->usuario->numTel }} </td>
                 <td style="text-align: center">
                     <div class="row">
                         <div class="col-md-4">
