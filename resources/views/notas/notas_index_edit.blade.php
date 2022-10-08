@@ -1,4 +1,3 @@
-
 @extends('../templates.principal')
 
 @section('title')
@@ -37,6 +36,7 @@
             <th class="align-middle" scope="col" style="text-align: center">Série</th>
             <th class="align-middle" scope="col" style="text-align: center">Valor</th>
             <th class="align-middle" scope="col" style="text-align: center">Emitente</th>
+            <th class="align-middle" scope="col" style="text-align: center">Status</th>
             <th scope="col" style="text-align: center; width: 3%">Ações</th>
         </tr>
         </thead>
@@ -48,18 +48,26 @@
                 <td style="text-align: center"> {{ $nota->serie }} </td>
                 <td style="text-align: center"> R$ {{ number_format((float)$nota->valor_nota, 2, ',', '')}}</td>
                 <td style="text-align: center"> {{ $nota->emitente->razao_social}} </td>
+                <td style="text-align: center">
+                    @if($nota->status == "Concluido")
+                    <strong class="alert-success">{{$nota->status}}</strong>
+                    @else
+                        <strong class="alert-danger">{{$nota->status}}</strong>
+                    @endif
+                </td>
 
-                <td style="text-align: center" >
+                <td style="text-align: center">
                     <div class="dropdown">
                         <button class="btn btn-secondary dropdown" type="button" id="dropdownMenuButton"
-                                data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" @if($nota->status == "Concluido") disabled @endif>
                             ⋮
                         </button>
                         <div class="dropdown-menu" aria-labelledby="dropdownMenuButton">
                             <a type="button" class="dropdown-item" onclick="location.href = '{{ route('edit.nota', ['id' => $nota->id]) }}'">Editar Nota Fiscal</a>
                             <a type="button" class="dropdown-item" onclick="location.href = '{{ route('materiais_edit.nota', ['nota' => $nota->id]) }}'">Editar da Materiais</a>
 
-                            <a type="button" class="dropdown-item" onclick="if(confirm('Tem certeza que deseja Remover a nota fiscal {{$nota->codigo}}?')) location.href='{{route('remover.nota', $nota->id)}}'">Remover</a>
+                            <a type="button" class="dropdown-item"
+                               onclick="if(confirm('Tem certeza que deseja Remover a nota fiscal {{$nota->codigo}}?')) location.href='{{route('remover.nota', $nota->id)}}'">Remover</a>
                         </div>
                     </div>
                 </td>

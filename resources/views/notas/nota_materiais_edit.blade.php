@@ -37,7 +37,6 @@
                 <th scope="col">Material</th>
                 <th scope="col">Quantidade</th>
                 <th scope="col">Valor do Item</th>
-                <th scope="col">Status</th>
                 <th scope="col">Ação</th>
             </tr>
             </thead>
@@ -50,13 +49,6 @@
                     </td>
                     <td>{{$material->quantidade}}</td>
                     <td>R$ {{$material->valor}}</td>
-                    <td>@if($material->status == false)
-                            <strong class="alert-danger">
-                                Pendente
-                            </strong>
-                        @else
-                            <strong class="alert-success">Recebido</strong>
-                        @endif</td>
                     <td><a href="{{route('remover_material.nota', $material->id)}}"><svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#ba2020" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg></a></td>
                 </tr>
             @endforeach
@@ -102,8 +94,8 @@
 
                             <div class="form-group col-md-4">
                                 <label for="quantidade_total"> Quantidade Total<span style="color: red">*</span></label>
-                                <input class="form-control  @error('inscricao_estadual') is-invalid @enderror" type="text" name="quantidade_total" id="quantidade_total"
-                                       maxlength="100" @if(isset($config->inscricao_estadual)) value="{{$config->inscricao_estadual}}"
+                                <input class="form-control  @error('inscricao_estadual') is-invalid @enderror" type="number" step="1" name="quantidade_total" id="quantidade_total"
+                                       min="0" oninput="validity.valid||(value='');" maxlength="100" @if(isset($config->inscricao_estadual)) value="{{$config->inscricao_estadual}}"
                                        @else value="{{ old('inscricao_estadual') }}" @endif autocomplete="quantidade_total" autofocus
                                        placeHolder="Insira a quantidade total do material" required>
                                 @error('inscricao_estadual')
@@ -114,9 +106,9 @@
                             </div>
 
                             <div class="form-group col-md-4">
-                                <label for="valor"> Valor<span style="color: red">*</span></label>
-                                <input class="form-control  @error('valor') is-invalid @enderror" type="text" name="valor" id="valor"
-                                       maxlength="100" autocomplete="valor" autofocus
+                                <label for="valor"> Valor Unitário<span style="color: red">*</span></label>
+                                <input class="form-control  @error('valor') is-invalid @enderror" type="number" step="any" name="valor" id="valor"
+                                       min="0" oninput="validity.valid||(value='');" maxlength="100" autocomplete="valor" autofocus
                                        placeHolder="Insira o valor do material" required>
                                 @error('valor')
                                 <span class="invalid-feedback" role="alert">
