@@ -106,6 +106,9 @@ Route::middleware(['auth', 'verified', 'CheckCargoAdminRequerente'])->group(func
     Route::get('solicitar_material', 'SolicitacaoController@show')->name('solicitar.material');
     Route::get('get_materiais/{unidade_id}', 'SolicitacaoController@getMateriais')->name('setor.getMateriais');
     Route::post('adicionar_material', 'SolicitacaoController@store')->name('add.material');
+    Route::post('solicitar_material/addMat', 'SolicitacaoController@addMaterial')->name('add.mat');
+    Route::post('solicitar_material/editarMat', 'SolicitacaoController@editarMaterial')->name('editar.mat');
+    Route::get('solicitar_material/removerMat/{item_id}', 'SolicitacaoController@removerMaterial')->name('remover.mat');
 });
 
 Route::middleware('auth', 'verified')->group(function () {

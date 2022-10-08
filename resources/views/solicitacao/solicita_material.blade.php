@@ -40,73 +40,95 @@
     </div>
 
     <div style="background-color: #D7D7E6">
-        <div class="form-row" style="margin-left: 10px">
-            <div class="form-group col-md-4">
-                <label for="selectUnidadeBasica" style="color: #151631; font-family: 'Segoe UI'; font-weight: 700">Unidade Básica:</label>
-                <select class="form-control" name="selectUnidadeBasica" id="selectUnidadeBasica" style="width: 100%" @if(Auth::user()->cargo_id != 1) disabled @endif>
-                    <option></option>
-                    @if(Auth::user()->cargo_id == 1)
-                        @foreach($unidades as $unidade)
-                            <option data-value="{{$unidade->id}}">{{ $unidade->nome }} </option>
-                        @endforeach
-                    @else
-                        <option data-value="{{$unidades->id}}" selected>{{ $unidades->nome }} </option>
-                    @endif
-                </select>
-            </div>
-            <div class="form-group col-md-4">
-                <label for="selectMaterial" style="color: #151631; font-family: 'Segoe UI'; font-weight: 700">Material</label>
-                <select id="selectMaterial" class="selectMaterial" class="form-control" style="width: 95%;">
-                    <option></option>
-                    <option data-value="" disabled>Material[Codigo]</option>
-                </select>
-            </div>
+        <form method="POST" action="{{ route('add.mat') }}">
+            @csrf
+            <input type="hidden" name="solicitacao_id" value="{{$solicitacao->id}}">
+            <div class="form-row" style="margin-left: 10px">
+                <div class="form-group col-md-4">
+                    <label for="selectUnidadeBasica" style="color: #151631; font-family: 'Segoe UI'; font-weight: 700">Unidade Básica:</label>
+                    <select class="form-control" name="unidade_id" id="selectUnidadeBasica" style="width: 100%" @if(Auth::user()->cargo_id != 1 || !($unidades instanceof \Illuminate\Database\Eloquent\Collection)) disabled @endif>
+                        <option></option>
+                        @if(Auth::user()->cargo_id == 1)
+                            @if($unidades instanceof \Illuminate\Database\Eloquent\Collection)
+                                @foreach($unidades as $unidade)
+                                    <option value="{{$unidade->id}}">{{ $unidade->nome }} </option>
+                                @endforeach
+                            @else
+                                <option value="{{$unidades->id}}" selected>{{$unidades->nome}}</option>
+                            @endif
+                        @else
+                            <option value="{{$unidades->id}}" selected>{{ $unidades->nome }} </option>
+                        @endif
+                    </select>
+                </div>
+                <div class="form-group col-md-4">
+                    <label for="selectMaterial" style="color: #151631; font-family: 'Segoe UI'; font-weight: 700">Material</label>
+                    <select id="selectMaterial" name="material_id" class="selectMaterial" class="form-control" style="width: 95%;">
+                        <option></option>
+                        <option value="" disabled>Material[Codigo]</option>
+                        @if(\Illuminate\Support\Facades\Auth::user()->cargo_id == 3)
+                            @foreach($materiais as $material)
+                                <option value="{{$material->id}}">{{$material->nome}}[{{$material->codigo}}]</option>
+                            @endforeach
+                        @endif
+                    </select>
+                </div>
+                <div class="form-group col-md-2">
+                    <label for="quantMaterial" style="color: #151631; font-family: 'Segoe UI'; font-weight: 700">Quantidade</label>
+                    <input type="text" min="1" class="form-control" id="quantMaterial" name="quantidade_solicitada" value="{{ old('quantidade_solicitada') }}">
+                </div>
 
-            <div id="estoquesId">
-
+                <div class="form-group col-md-2">
+                    <button type="submit" id="addTable" style="margin-top: 30px;" class="btn btn-primary">Adicionar</button>
+                </div>
             </div>
-            @foreach($materiais as $material)
-                <input type="hidden" id="unidade_{{$material->id}}" value="{{$material->unidade}}">
-                @if(Auth::user()->cargo_id == 1)
-                    @foreach($unidades as $unidade)
-                        <input type="hidden" id="estoque_{{$material->id.$unidade->id}}"
-                               value="{{$estoque = \App\Estoque::where('material_id', $material->id)->where('setor_id', $unidade->setor->id)->first()->quantidade}}">
-                    @endforeach
-                @else
-                    @if(isset(\App\Estoque::where('material_id', $material->id)->where('setor_id', $unidades->setor->id)->first()->quantidade))
-                        <input type="hidden" id="estoque_{{$material->id.$unidades->id}}"
-                               value="{{$estoque = \App\Estoque::where('material_id', $material->id)->where('setor_id', $unidades->setor->id)->first()->quantidade}}">
-                    @endif
-                @endif
-            @endforeach
-            <div class="form-group col-md-2">
-                <label for="quantMaterial" style="color: #151631; font-family: 'Segoe UI'; font-weight: 700">Quantidade</label>
-                <input type="text" min="1" class="form-control" id="quantMaterial" name="quantidade" value="{{ old('quantidade') }}">
-            </div>
-
-            <div class="form-group col-md-2">
-                <button id="addTable" style="margin-top: 30px;" class="btn btn-primary" onclick="addTable()">Adicionar</button>
-            </div>
-        </div>
+        </form>
     </div>
+
+    <table id="tableMaterial" class="table table-hover table-responsive-md" style="margin-top: 10px">
+        <thead style="background-color: #151631; color: white; border-radius: 15px">
+        <tr>
+            <th scope="col">Material</th>
+            <th scope="col" style="text-align: center">Unidade Básica</th>
+            <th scope="col" style="text-align: center">Quantidade</th>
+            @if(Auth::user()->cargo_id == 1)
+                <th scope="col" style="text-align: center">Estoque</th>
+            @endif
+            <th scope="col" style="text-align: center">Unidade</th>
+            <th scope="col" style="text-align: center">Ações</th>
+        </tr>
+        </thead>
+        <tbody>
+        @if(count($itensSolicitacao) > 0)
+            @foreach($itensSolicitacao as $item)
+                <tr>
+                    <td>{{$item->nome}}</td>
+                    <td class="text-center">{{$unidades->nome}}</td>
+                    <td class="text-center">{{$item->quantidade_solicitada}}</td>
+                    @if(Auth::user()->cargo_id == 1)
+                        <td class="text-center">{{$item->quantidade}}</td>
+                    @endif
+                    <td class="text-center">{{$item->unidade}}</td>
+                    <td class="text-center">
+                        <div class="dropdown">
+                            <button class="btn btn-secondary dropdown" type="button" id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                ⋮
+                            </button>
+                            <div class="dropdown-menu" aria-labelledby="dropdownMenuButton">
+                                <a type="button" class="dropdown-item" data-toggle="modal" data-target="#editar_item_{{$item->id}}">Editar</a>
+                                <a type="button" class="dropdown-item" href="{{route('remover.mat', ['item_id' => $item->id])}}">Remover</a>
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+            @endforeach
+        @endif
+        </tbody>
+    </table>
 
     <form method="POST" id="formSolicitacao" name="formSolicitacao" action="{{ route('add.material') }}">
         @csrf
-        <table id="tableMaterial" class="table table-hover table-responsive-md" style="margin-top: 10px">
-            <thead style="background-color: #151631; color: white; border-radius: 15px">
-            <tr>
-                <th scope="col">Material</th>
-                <th scope="col" style="text-align: center">Unidade Básica</th>
-                <th scope="col" style="text-align: center">Quantidade</th>
-                @if(Auth::user()->cargo_id == 1)
-                    <th scope="col" style="text-align: center">Estoque</th>
-                @endif
-                <th scope="col" style="text-align: center">Unidade</th>
-                <th scope="col" style="text-align: center">Ações</th>
-            </tr>
-            </thead>
-            <tbody></tbody>
-        </table>
+        <input type="hidden" name="solicitacao_id" value="{{$solicitacao->id}}">
         @if(Auth::user()->cargo_id == 3)
             <div class="form-group col-md-12" class="form-row" style="border-bottom: #cfc5c5 1px solid; padding: 0 0 20px 0;">
                 <label for="inputObservacao"><strong>Observações:</strong></label>
@@ -114,48 +136,47 @@
             </div>
         @endif
 
-        <input type="hidden" id="dataTableMaterial" name="dataTableMaterial" value="">
-        <input type="hidden" id="dataTableQuantidade" name="dataTableQuantidade" value="">
-        <input type="hidden" id="dataTableUnidade" name="dataTableUnidade" value="">
-
         <Button class="btn btn-secondary" type="button" onclick="location.href = '../' "> Cancelar</Button>
-        <button id="solicita" class="btn btn-success" disabled onclick="return setValuesRowInput()">Solicitar</button>
+        <button id="solicita" class="btn btn-success" @if(count($itensSolicitacao) == 0) disabled @endif onclick="return setValuesRowInput()">Solicitar</button>
     </form>
 
-    <input id="flag" value="xx" hidden>
-    <div class="modal fade" id="detalhesSolicitacao" tabindex="-1" role="dialog" aria-labelledby="modalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-xl" role="document">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="modalLabel" style="color:#151631">Editar Solicitação</h5>
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
-                </div>
-                <div class="modal-body">
-                    <div id="modalBody">
-                        <div class="form-row">
-                            <div class="form-group col-md-3">
-                                <label for="selectMaterialEdit" style="color: #151631; font-family: 'Segoe UI'; font-weight: 700;">Material</label>
-                                <select id="selectMaterialEdit" style="width: 110%;" class="selectMaterial" class="form-control" name="selectMaterialEdit">
-                                    <option></option>
-                                </select>
-                            </div>
+    @foreach($itensSolicitacao as $item)
+        <div class="modal fade" id="editar_item_{{$item->id}}" tabindex="-1" role="dialog" aria-labelledby="modalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-xl" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="modalLabel" style="color:#151631">Editar Solicitação</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <div id="modalBody">
+                            <form method="post" action="{{route('editar.mat')}}">
+                                @csrf
+                                <input type="hidden" name="item_id" value="{{$item->id}}">
+                                <div class="form-row">
+                                    <div class="form-group col-md-3">
+                                        <label for="MaterialEdit" style="color: #151631; font-family: 'Segoe UI'; font-weight: 700;">Material</label>
+                                        <input class="form-control" id="materialEdit" type="text" value="{{$item->nome}}" disabled>
+                                    </div>
 
-                            <input type="hidden" id="unidade_selected" value="">
-                            <div class="form-group col-md-2" style="margin-left: 4%">
-                                <label for="InputQuantEdit" style="color: #151631; font-family: 'Segoe UI'; font-weight: 700">Quantidade</label>
-                                <input type="number" min="1" onkeypress="return onlyNums(event,this);" class="form-control" id="InputQuantEdit" name="InputQuantEdit" value="{{ old('quantidade') }}">
-                            </div>
-                            <div class="form-group">
-                                <button id="updateMaterial" style="margin-top: 30px; margin-left: 10px" class="btn btn-primary" onclick="confirmarAlteracao()">Atualizar</button>
-                            </div>
+                                    <div class="form-group col-md-2" style="margin-left: 4%">
+                                        <label for="quantidade_solicitada" style="color: #151631; font-family: 'Segoe UI'; font-weight: 700">Quantidade</label>
+                                        <input type="number" min="1" onkeypress="return onlyNums(event,this);" class="form-control" id="quantidade_solicitada" name="quantidade_solicitada"
+                                               value="{{ old('quantidade', $item->quantidade_solicitada) }}">
+                                    </div>
+                                    <div class="form-group">
+                                        <button type="submit" id="updateMaterial" style="margin-top: 30px; margin-left: 10px" class="btn btn-primary">Atualizar</button>
+                                    </div>
+                                </div>
+                            </form>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
+    @endforeach
 
     <script>
         var cont = 0;
@@ -167,34 +188,34 @@
 @endsection
 
 @section('post-script')
-    @if(Auth::user()->cargo_id == 1)
+    @if(Auth::user()->cargo_id == 1 && !($unidades instanceof \Illuminate\Database\Eloquent\Collection))
         <script type="text/javascript">
-
-            $('#selectUnidadeBasica').change(function () {
-                var unidade_id = $("#selectUnidadeBasica option:selected").data('value');
+            $(function () {
+                var unidade_id = $("#selectUnidadeBasica option:selected").val();
 
                 $.get('/get_materiais/' + unidade_id, function (estoques) {
                     $.each(estoques, function (key, value) {
-                        $('#selectMaterial').append(`<option data-value="${value.material_id}" id="Material${value.material_id}">${value.nome}[${value.codigo} - ${value.quantidade}]</option>`);
+                        $('#selectMaterial').append(`<option value="${value.material_id}" id="Material${value.material_id}">${value.nome}[${value.codigo} - ${value.quantidade}]</option>`);
+                        $('#selectMaterialEdit').append(`<option value="${value.material_id}" id="MaterialEdit${value.material_id}">${value.nome}[${value.codigo} - ${value.quantidade}]</option>`);
+                        $('#estoquesId').append(`<input type="hidden" id="estoque_${value.material_id}${unidade_id}" value="${value.quantidade}">`);
+                    });
+                });
+            });
+        </script>
+    @elseif(Auth::user()->cargo_id == 1)
+        <script type="text/javascript">
+
+            $('#selectUnidadeBasica').change(function () {
+                var unidade_id = $("#selectUnidadeBasica option:selected").val();
+
+                $.get('/get_materiais/' + unidade_id, function (estoques) {
+                    $.each(estoques, function (key, value) {
+                        $('#selectMaterial').append(`<option value="${value.material_id}" id="Material${value.material_id}">${value.nome}[${value.codigo} - ${value.quantidade}]</option>`);
                         $('#selectMaterialEdit').append(`<option value="${value.material_id}" id="MaterialEdit${value.material_id}">${value.nome}[${value.codigo} - ${value.quantidade}]</option>`);
                         $('#estoquesId').append(`<input type="hidden" id="estoque_${value.material_id}${unidade_id}" value="${value.quantidade}">`);
                     });
                 });
 
-            });
-        </script>
-    @else
-        <script type="text/javascript">
-            $(function () {
-                var unidade_id = $("#selectUnidadeBasica option:selected").data('value');
-
-                $.get('/get_materiais/' + unidade_id, function (estoques) {
-                    $.each(estoques, function (key, value) {
-                        $('#selectMaterial').append(`<option data-value="${value.material_id}" id="Material${value.material_id}">${value.nome}[${value.codigo}]</option>`);
-                        $('#selectMaterialEdit').append(`<option value="${value.material_id}" id="MaterialEdit${value.material_id}">${value.nome}[${value.codigo}]</option>`);
-                        $('#estoquesId').append(`<input type="hidden" id="estoque_${value.material_id}${unidade_id}" value="${value.quantidade}">`);
-                    });
-                });
             });
         </script>
     @endif

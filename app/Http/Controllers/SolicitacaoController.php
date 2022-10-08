@@ -18,89 +18,145 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Barryvdh\DomPDF\Facade as PDF;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Validator;
 
 class SolicitacaoController extends Controller
 {
+
     public function show()
     {
-        if (Auth::user()->cargo_id == 1) {
-            $estoques = Estoque::where('deposito_id', 1)->get();
-            $materiais = Material::all();
-            $unidades = Unidade::all();
-
-
-        } elseif (Auth::user()->cargo_id == 3) {
+        //Verifica as solicitações tanto do admin como do solicitante normal
+        if (Auth::user()->cargo_id == 3) {
             $unidades = Unidade::where('usuario_id', Auth::user()->id)->first();
-            $materiais = Material::all();
-            $estoques = Estoque::where('setor_id', $unidades->setor_id);
+            $solicitacaos = Solicitacao::where('unidade_id', $unidades->id)->get()->toArray();
+        } elseif (Auth::user()->cargo_id == 1) {
+            $solicitacaos = Solicitacao::where('admin_id', Auth::user()->id)->get()->toArray();
+            //Precisamos preencher para que o código funcione
+            $unidades = Unidade::all();
         }
 
-        return view('solicitacao.solicita_material', ['materiais' => $materiais, 'unidades' => $unidades, 'estoques' => $estoques]);
+        $solicitacaos = array_column($solicitacaos, 'id');
+        $historicoStatus = HistoricoStatus::whereIn('solicitacao_id', $solicitacaos)->where('status', 'Não Finalizado')->first();
+        $itensSolicitacao = [];
+
+        //Verifica se já existe uma solicitação não finalizada, se não existir, cria uma
+        if ($historicoStatus != null) {
+            $solicitacao = Solicitacao::find($historicoStatus->solicitacao_id);
+            $itensSolicitacao = DB::table('item_solicitacaos')
+                ->where('solicitacao_id', $solicitacao->id)
+                ->join('materials', 'item_solicitacaos.material_id', '=', 'materials.id')
+                ->join('estoques', 'item_solicitacaos.material_id', '=', 'estoques.material_id')
+                ->select('item_solicitacaos.id','materials.nome','item_solicitacaos.quantidade_solicitada','item_solicitacaos.material_id','materials.unidade','estoques.quantidade')
+                ->get();
+        } else {
+            $solicitacao = new Solicitacao();
+            if (Auth::user()->cargo_id == 3) {
+                $solicitacao->unidade_id = $unidades->id;
+            } elseif (Auth::user()->cargo_id == 1) {
+                $solicitacao->admin_id = Auth::user()->id;
+            }
+            $solicitacao->save();
+
+            $historicoStatus = new HistoricoStatus();
+            $historicoStatus->solicitacao_id = $solicitacao->id;
+            $historicoStatus->status = 'Não Finalizado';
+            $historicoStatus->save();
+        }
+
+        //Verifica se já existem itens na solicitação para não exibir os materiais que já estão presentes naquela solicitação
+        if (count($itensSolicitacao) > 0) {
+            //Se existir, é por que já foi adicionado um item na solicitação, então a unidade já foi atrelada na solicitação
+            if (Auth::user()->cargo_id == 1) {
+                $unidades = Unidade::find($solicitacao->unidade_id);
+            }
+            $materiais_solicitacao = array_column($itensSolicitacao->toArray(), 'material_id');
+            $materiais = DB::table('materials')
+                ->join('estoques', 'materials.id', '=', 'estoques.material_id')
+                ->whereNotIn('materials.id', $materiais_solicitacao)
+                ->where('setor_id', '=', $unidades->setor_id)
+                ->get();
+
+        } else {
+            //Se não existir itens na solicitação, então não existe uma unidade na solicitação no caso do administrador
+            if (Auth::user()->cargo_id == 1) {
+                //Esse material::all() é desnecessário (por causa do JS que recupera os materiais em tempo real), mas é preciso para rodar o código
+                $materiais = Material::all();
+            } else {
+                //Se não, ele já vai pegar os materiais especificos do setor, já que o solicitante já tem uma unidade atrelada
+                $materiais = DB::table('materials')
+                    ->join('estoques', 'materials.id', '=', 'estoques.material_id')
+                    ->where('setor_id', '=', $unidades->setor_id)
+                    ->get();
+            }
+        }
+
+        return view('solicitacao.solicita_material', compact('materiais', 'unidades', 'solicitacao', 'itensSolicitacao'));
 
 
     }
 
+    public function addMaterial(Request $request)
+    {
+        $validator = Validator::make($request->all(), ItemSolicitacao::$rulesAdd, ItemSolicitacao::$messages)->validate();
+
+        $solicitacao = Solicitacao::find($request->solicitacao_id);
+
+        $itemSolicitacao = new ItemSolicitacao();
+        $itemSolicitacao->quantidade_solicitada = $request->quantidade_solicitada;
+        if (Auth::user()->cargo_id == 1) {
+            if ($solicitacao->unidade_id == null) {
+                $solicitacao->unidade_id = $request->unidade_id;
+                $solicitacao->update();
+            }
+
+            $itemSolicitacao->quantidade_aprovada = $itemSolicitacao->quantidade_solicitada;
+        }
+        $itemSolicitacao->material_id = $request->material_id;
+        $itemSolicitacao->solicitacao_id = $request->solicitacao_id;
+
+        $itemSolicitacao->save();
+
+        return redirect()->back()->with('success', 'Material adicionado com sucesso!');
+    }
+
+
+    public function removerMaterial($item_id)
+    {
+        $itemSolicitacao = ItemSolicitacao::find($item_id);
+        $itemSolicitacao->delete();
+        return redirect()->back()->with('success', 'Material removido com sucesso!');
+    }
+
+    public function editarMaterial(Request $request)
+    {
+        $validator = Validator::make($request->all(), ItemSolicitacao::$rulesEdit, ItemSolicitacao::$messages)->validate();
+
+        $item = ItemSolicitacao::find($request->item_id);
+
+        $item->quantidade_solicitada = $request->quantidade_solicitada;
+        $item->update();
+
+        return redirect()->back()->with('success', 'Material editado com sucesso!');
+    }
+
     public function store(Request $request)
     {
-        $materiais = explode(',', $request->dataTableMaterial);
-        $quantidades = explode(',', $request->dataTableQuantidade);
-        $unidades = explode(',', $request->dataTableUnidade);
+        $usuario = Auth::user();
 
-        $materiaisCheck = true;
-
-        for ($i = 0; $i < count($materiais); ++$i) {
-            if (empty($materiais[$i]) || empty($quantidades[$i]) || !is_numeric($materiais[$i]) || !is_numeric($quantidades[$i])) {
-                $materiaisCheck = false;
-                break;
-            }
-
-            if ((is_numeric($materiais[$i]) && intval($materiais[$i]) < 0 || strpos($materiais[$i], '.') || strpos($materiais[$i], ','))
-                || (is_numeric($quantidades[$i]) && intval($quantidades[$i]) < 0 || strpos($quantidades[$i], '.') || strpos($quantidades[$i], ','))) {
-                $materiaisCheck = false;
-                break;
-            }
-            $estoque = Estoque::where('material_id', '=', $materiais[$i])->first();
-            if ($quantidades[$i] > $estoque->quantidade) {
-                $material = Material::find($materiais[$i]);
-                return redirect()->back()->withErrors('Você solicitou uma quantidade do material ' . $material->nome
-                    . ' que não possui em estoque. Quantidade em Estoque: ' . $estoque->quantidade . ' Quantidade Solicitada: ' . $quantidades[$i]);
-            }
-        }
-
-        if (!$materiaisCheck) {
-            return redirect()->back()->withErrors('Informe valores válidos para o(s) material(is) e sua(s) quantidade(s)');
-        }
-
-        $usuario = Usuario::find(Auth::user()->id);
-
-        $solicitacao = new Solicitacao();
-        $solicitacao->unidade_id = $unidades[0];
+        $solicitacao = Solicitacao::find($request->solicitacao_id);
         $solicitacao->observacao_requerente = $request->observacao_requerente;
+        $solicitacao->update();
 
-        $solicitacao->save();
-
-        $historicoStatus = new HistoricoStatus();
-        if($usuario->cargo_id == 1) {
+        $historicoStatus = HistoricoStatus::where('solicitacao_id', $solicitacao->id)->first();
+        if ($usuario->cargo_id == 1) {
             $historicoStatus->status = 'Aprovado';
             $historicoStatus->data_aprovado = now();
         } else {
             $historicoStatus->status = 'Aguardando Analise';
         }
-        $historicoStatus->solicitacao_id = $solicitacao->id;
-        $historicoStatus->save();
+        $historicoStatus->update();
 
-        for ($i = 0; $i < count($materiais); ++$i) {
-            $itemSolicitacao = new ItemSolicitacao();
-            $itemSolicitacao->quantidade_solicitada = $quantidades[$i];
-            if($usuario->cargo_id == 1) {
-                $itemSolicitacao->quantidade_aprovada = $quantidades[$i];
-            }
-            $itemSolicitacao->material_id = $materiais[$i];
-            $itemSolicitacao->solicitacao_id = $solicitacao->id;
-            $itemSolicitacao->save();
-        }
-
-        return redirect()->back()->with('success', 'Solicitação feita com sucesso!');
+        return redirect()->back()->with('success', 'Solicitação realizada com sucesso!');
     }
 
     public function listSolicitacoesAprovadas()
@@ -125,8 +181,11 @@ class SolicitacaoController extends Controller
 
     public function listSolicitacoesRequerente()
     {
+        $itensSolicitacao = ItemSolicitacao::all();
+        $solicitacaosId = $itensSolicitacao->unique('solicitacao_id')->pluck('solicitacao_id');
+
         $unidade = Unidade::where('usuario_id', '=', Auth::user()->id)->first();
-        $solicitacoes = Solicitacao::where('unidade_id', '=', $unidade->id)->get();
+        $solicitacoes = Solicitacao::whereIn('id', $solicitacaosId)->where('unidade_id', '=', $unidade->id)->get();
         $historicoStatus = HistoricoStatus::whereIn('solicitacao_id', array_column($solicitacoes->toArray(), 'id'))->orderBy('id', 'desc')->get();
 
         $solicitacoesID = array_column($historicoStatus->toArray(), 'solicitacao_id');
@@ -423,17 +482,17 @@ class SolicitacaoController extends Controller
 
     }
 
-    public function getItemTrocaAdmin($material_id,$solicitacao_id)
+    public function getItemTrocaAdmin($material_id, $solicitacao_id)
     {
 
         $solicitacao = Solicitacao::find($solicitacao_id);
         $unidade = Unidade::find($solicitacao->unidade_id);
-        $itensSolicitacao = ItemSolicitacao::where('solicitacao_id',$solicitacao_id)->get();
+        $itensSolicitacao = ItemSolicitacao::where('solicitacao_id', $solicitacao_id)->get();
 
         $estoque = DB::table('estoques')
-            ->join('materials','estoques.material_id','=','materials.id')
-            ->where('setor_id',$unidade->setor_id)
-            ->whereNotIn('material_id',$itensSolicitacao->pluck('material_id'))
+            ->join('materials', 'estoques.material_id', '=', 'materials.id')
+            ->where('setor_id', $unidade->setor_id)
+            ->whereNotIn('material_id', $itensSolicitacao->pluck('material_id'))
             ->get();
 
         return json_encode($estoque);
@@ -449,11 +508,27 @@ class SolicitacaoController extends Controller
 
     public function getMateriais($unidade_id)
     {
+        $solicitacaos = Solicitacao::where('admin_id', Auth::user()->id)->pluck('id');
+        $historicoStatus = HistoricoStatus::whereIn('solicitacao_id', $solicitacaos)->where('status', 'Não Finalizado')->first();
+        $itensSolicitacao = [];
+
+
+        //Verifica se já existe uma solicitação não finalizada, se não existir, cria uma
+        if ($historicoStatus != null) {
+            $solicitacao = Solicitacao::find($historicoStatus->solicitacao_id);
+            $itensSolicitacao = ItemSolicitacao::where('solicitacao_id', $solicitacao->id)->get();
+        }
+
+
+        $materiais_solicitacao = array_column($itensSolicitacao->toArray(), 'material_id');
+
         $unidade = Unidade::find($unidade_id);
 
         $materiais = DB::table('materials')
             ->join('estoques', 'materials.id', '=', 'estoques.material_id')
-            ->where('setor_id', '=', $unidade->setor_id)->get();
+            ->whereNotIn('materials.id', $materiais_solicitacao)
+            ->where('setor_id', '=', $unidade->setor_id)
+            ->get();
 
 
         return response()->json($materiais);
@@ -663,7 +738,7 @@ class SolicitacaoController extends Controller
                     }
                 } else {
                     ++$checkQuantMinima;
-                    array_push($errorMessage, $itemSolicitacaos[$i]->nome.'(Dispoível:'.$itemSolicitacaos[$i]->quantidade.')');
+                    array_push($errorMessage, $itemSolicitacaos[$i]->nome . '(Dispoível:' . $itemSolicitacaos[$i]->quantidade . ')');
                 }
             }
         }
@@ -701,7 +776,8 @@ class SolicitacaoController extends Controller
     }
 
 
-    public function realizarTroca(Request $request){
+    public function realizarTroca(Request $request)
+    {
 
         $itemSolicitacao = new ItemSolicitacao();
         $itemSolicitacao->solicitacao_id = $request->solicitacao_id;
@@ -710,12 +786,12 @@ class SolicitacaoController extends Controller
         $itemSolicitacao->quantidade_aprovada = $request->quant_material;
         $itemSolicitacao->save();
 
-        $itemSolicitacaoOriginal = ItemSolicitacao::where('material_id',$request->itemAtual)->where('solicitacao_id',$request->solicitacao_id)->first();
+        $itemSolicitacaoOriginal = ItemSolicitacao::where('material_id', $request->itemAtual)->where('solicitacao_id', $request->solicitacao_id)->first();
         $itemSolicitacaoOriginal->item_troca_id = $itemSolicitacao->id;
         $itemSolicitacaoOriginal->quantidade_aprovada = 0;
         $itemSolicitacaoOriginal->update();
 
-        return response()->json(['success'=> 'Material Trocado com sucesso!']);
+        return response()->json(['success' => 'Material Trocado com sucesso!']);
 
     }
 }

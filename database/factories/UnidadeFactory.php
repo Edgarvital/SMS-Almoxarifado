@@ -7,7 +7,7 @@ use Faker\Generator as Faker;
 
 $factory->define(Unidade::class, function (Faker $faker) {
     return [
-        'nome' => 'Setor ' . $faker->company,
+        'nome' => 'Unidade ' . $faker->company,
         'cep' => $faker->postcode,
         'endereco' => $faker->address,
         'bairro' => $faker->country,
